@@ -1,0 +1,77 @@
+---
+title: "Week 8 Assignment"
+Author: Aaron
+output: html_document
+date: "2024-05-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(shiny)
+library(ggplot2)
+library(plotly)
+library(dplyr)
+```
+
+```{r}
+rolling_stone <- read.csv("rolling_stone.csv")
+ui <- fluidPage(
+  titlePanel("Rolling Stone Top Albums Analysis"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("selected_album", "Choose an Album:", 
+                  choices = unique(rolling_stone$clean_name)),
+      selectInput("selected_genre", "Choose a Genre:", 
+                  choices = unique(rolling_stone$genre)),
+      hr(),
+      helpText("This shows the rankings and the sistribution based on the genre.")
+    ),
+    mainPanel(
+      plotlyOutput("interactiveRankPlot"),
+      plotOutput("genreBoxPlot")
+    )
+  )
+)
+
+```
+
+```{r}
+# the interactive line chart using a shiny server
+server <- function(input, output) {
+  output$interactiveRankPlot <- renderPlotly({
+    selected_album_data <- rolling_stone %>% 
+      filter(clean_name == input$selected_album) %>%
+      select(clean_name, rank_2003, rank_2012, rank_2020) %>%
+      pivot_longer(cols = starts_with("rank"), names_to = "year", values_to = "rank") %>%
+      mutate(year = as.integer(sub("rank_", "", year)))
+    
+    p <- ggplot(selected_album_data, aes(x = year, y = rank, group = clean_name)) +
+      geom_line() +
+      geom_point() +
+      labs(title = paste("Ranking Changes of", input$selected_album),
+           x = "Year", y = "Rank")
+    
+    ggplotly(p)
+  })
+  
+  # this is the second graph, a responsive box plot
+  output$genreBoxPlot <- renderPlot({
+    genre_data <- rolling_stone %>% 
+      filter(genre == input$selected_genre)
+    
+    ggplot(genre_data, aes(x = genre, y = rank_2020, fill = genre)) +
+      geom_boxplot() +
+      labs(title = paste("Rank Distribution for Genre:", input$selected_genre),
+           x = "Genre", y = "Rank in 2020") +
+      theme_minimal()
+  })
+}
+
+# running the shiny app that we just made
+shinyApp(ui = ui, server = server)
+```
