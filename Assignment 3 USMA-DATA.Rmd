@@ -1,0 +1,97 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-04-14"
+---
+
+# question one
+install.packages("rio")
+
+echo = TRUE
+library(tidyverse)
+library(rio)
+
+
+USMA <- import('USMA_Progression.xlsx')
+
+# question two
+```{r}
+USMA <- USMA %>%
+  group_by(year, company_n) %>% 
+  summarize(femalepeers2 = sum(female), .groups = "drop") %>%
+  left_join(USMA, by = c('year', 'company_n')) %>%
+  mutate(femalepeers2 = case_when(
+    female == 1 ~ femalepeers2 - 1,
+    TRUE ~ femalepeers2))
+  
+USMA
+```
+
+```{r}
+USMA <- USMA %>%
+  group_by(year, company_n) %>% 
+  summarize(malepeers2 = sum(case_when(female == 0 ~ 1, TRUE ~ 0)),
+            .groups = "drop") %>%
+  left_join(USMA, by = c('year', 'company_n')) %>%
+  mutate(malepeers2 = case_when(
+    female == 0 ~ malepeers2 - 1,
+    TRUE ~ malepeers2))
+
+USMA
+```
+
+```{r}
+USMA <- USMA %>% 
+  group_by(year, company_n) %>%
+  summarize(totpeople2 = n(), .groups = "drop") %>%
+  left_join(USMA, by = c('year', 'company_n'))
+
+USMA
+```
+#3
+
+# there seems to be an error occuring with the malepeers and femalepeers columns not lining up since they seem to display the total number rather than the peers. My model should be more trustowrthy as it takes this into account.
+#4
+```{r}
+USMA <- USMA %>%
+  mutate(company = str_sub(company_n, 1, 1)) %>%
+  mutate(division = str_sub(company_n, 3)) 
+
+USMA
+```
+#5
+```{r}
+USMA <- USMA %>%
+  group_by(year) %>%
+  summarize(totclasses = n_distinct(class)) %>%
+  filter(totclasses >= 4) %>%
+  left_join(USMA, by = 'year')
+
+USMA
+```
+#6
+```{r}
+top_four_rates <- USMA %>%
+  group_by(company) %>%
+  summarize(rate = sum(continue_or_grad == 1) / n()) %>%
+  arrange(desc(rate)) %>%
+  slice(1:4)
+
+top_four_rates
+```
+```{r}
+class_grad_rates <- USMA %>%
+  group_by(class) %>%
+  summarize(c_rate = sum(continue_or_grad == 1) / n())
+
+class_grad_rates
+```
+
+```{r}
+female_grad_rates <- USMA %>%
+  group_by(class) %>%
+  filter(female == 1) %>%
+  summarize(f_rate = sum(continue_or_grad == 1) / n())
+
+female_grad_rates
+```
